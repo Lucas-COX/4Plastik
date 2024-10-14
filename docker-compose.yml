@@ -4,3 +4,9 @@ services:
     command: node build/main.js
     env_file: ./bot/.env 
 
+  backend:
+    build: backend/
+    ports:
+      - 8080:8080
+    volumes:
+      - ./backend/:/tmp/app/
