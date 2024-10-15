@@ -1,23 +1,30 @@
-from typing import Union, List
+from typing import Union
 import asyncio
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Depends, HTTPException, status
 from pydantic import BaseModel
-import queue
 import pickle
 import numpy as np
 import sqlite3
+from fastapi.security import OAuth2PasswordBearer
+import jwt
+import bcrypt
 
 app = FastAPI()
 
-# Define a simple queue to hold incoming messages
-message_queue = queue.Queue()
-
-# List to hold processed messages
-processed_messages: List[dict] = []
+# Define an asyncio queue to hold incoming messages
+message_queue = asyncio.Queue()
 
 # Load the trained model (assuming the model is saved as 'suicide_model.pkl')
 with open('suicide_model.pkl', 'rb') as model_file:
     suicide_model = pickle.load(model_file)
+    
+# Define SQLite database path
+db_path = 'messages.db'
+
+# OAuth2 setup
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
+SECRET_KEY = "testsecretkey"
+ALGORITHM = "HS256"
 
 # Define the incoming request model
 class Message(BaseModel):
@@ -25,22 +32,68 @@ class Message(BaseModel):
     content: str
     social: str
 
-# Endpoint to receive messages and add them to the queue
+# Hash a password using bcrypt
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
+
+# Verify user credentials against the 'users' table
+def verify_user(email: str, password: str) -> bool:
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT password FROM users WHERE email = ?", (email,))
+    user = cursor.fetchone()
+    conn.close()
+    if user is None:
+        return False
+    return bcrypt.checkpw(password.encode('utf-8'), user[0].encode('utf-8'))
+
+# Verify API key against the 'api_keys' table
+def verify_api_key(key: str) -> bool:
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM api_keys WHERE key = ?", (key,))
+    api_key = cursor.fetchone()
+    conn.close()
+    return api_key is not None
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+@app.post("/token")
+async def login_for_access_token(login_request: LoginRequest):
+    if not verify_user(login_request.username, login_request.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = jwt.encode({"sub": login_request.username}, SECRET_KEY, algorithm=ALGORITHM)
+    return {"access_token": token, "token_type": "bearer"}
+
+# Endpoint to receive messages and add them to the queue (protected by API key)
 @app.post("/add-message")
-async def add_message(message: Message):
-    message_queue.put(message)
+async def add_message(message: Message, token: str = Depends(oauth2_scheme)):
+    if not verify_api_key(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    await message_queue.put(message)
     return {"status": "Message added to queue"}
 
 # Function to process messages from the queue asynchronously
 async def process_queue():
-    conn = sqlite3.connect('messages.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     while True:
         if not message_queue.empty():
-            message = message_queue.get()
+            message = await message_queue.get()
             
             # Preprocess the message content for the model
-            # Note: Actual preprocessing steps depend on how the model was trained
             input_data = np.array([message.content])
             
             # Execute model to get the score
@@ -61,11 +114,41 @@ async def process_queue():
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(process_queue())
+    
+def user_exists(email):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM users WHERE email = ?", (email,))
+    user = cursor.fetchone()
+    conn.close()
+    return user is not None
 
-# Endpoint to get all processed messages
+# Endpoint to get all processed messages (protected by user authentication)
 @app.get("/get-processed-messages")
-async def get_processed_messages():
-    conn = sqlite3.connect('messages.db')
+async def get_processed_messages(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        email = payload.get("sub")
+        if email is None or not user_exists(email):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM messages")
     rows = cursor.fetchall()
