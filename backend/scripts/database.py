@@ -1,7 +1,9 @@
+import os
 import sqlite3
 
 # Connexion à la base de données (si elle n'existe pas, elle sera créée)
-conn = sqlite3.connect('messages.db')
+data_path = os.path.join(os.path.dirname(__file__), "../data")
+conn = sqlite3.connect(os.path.join(data_path, 'messages.db'))
 
 # Création d'un curseur pour exécuter des commandes SQL
 cursor = conn.cursor()
