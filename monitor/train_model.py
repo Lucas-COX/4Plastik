@@ -9,7 +9,7 @@ import os
 
 # Load the dataset
 # Assuming the dataset is downloaded from Kaggle and saved as 'suicide_watch.csv'
-data = pd.read_csv('Suicide_Detection.csv')
+data = pd.read_csv('datasets/Suicide_Detection.csv')
 
 # Preprocessing: Fill missing values and rename columns if necessary
 data = data.dropna(subset=['text'])  # Drop rows with missing text
@@ -36,9 +36,8 @@ accuracy = model_pipeline.score(X_test, y_test)
 print(f"Model Accuracy: {accuracy * 100:.2f}%")
 
 # Save the trained model to a file
-parent_directory = os.path.join(os.getcwd(), '..')
-model_path = os.path.join(parent_directory, 'suicide_model.pkl')
+model_path = os.path.join(os.path.dirname(__file__), 'models/suicide_model.pkl')
 with open(model_path, 'wb') as model_file:
     pickle.dump(model_pipeline, model_file)
 
-print("Model training complete and saved as 'suicide_model.pkl'")
+print(f"Model training complete and saved as '{model_path}'")

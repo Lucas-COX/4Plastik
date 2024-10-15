@@ -6,6 +6,7 @@ import queue
 import pickle
 import numpy as np
 import sqlite3
+import os
 
 app = FastAPI()
 
@@ -15,8 +16,11 @@ message_queue = queue.Queue()
 # List to hold processed messages
 processed_messages: List[dict] = []
 
+model_path = os.environ.get("MODEL_PATH")
+data_path = os.path.join(os.path.dirname(__file__), 'data/messages.db')
+
 # Load the trained model (assuming the model is saved as 'suicide_model.pkl')
-with open('suicide_model.pkl', 'rb') as model_file:
+with open(model_path, 'rb') as model_file:
     suicide_model = pickle.load(model_file)
 
 # Define the incoming request model
@@ -33,7 +37,7 @@ async def add_message(message: Message):
 
 # Function to process messages from the queue asynchronously
 async def process_queue():
-    conn = sqlite3.connect('messages.db')
+    conn = sqlite3.connect(data_path)
     cursor = conn.cursor()
     while True:
         if not message_queue.empty():
@@ -65,7 +69,7 @@ async def startup_event():
 # Endpoint to get all processed messages
 @app.get("/get-processed-messages")
 async def get_processed_messages():
-    conn = sqlite3.connect('messages.db')
+    conn = sqlite3.connect(data_path)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM messages")
     rows = cursor.fetchall()
