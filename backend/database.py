@@ -17,6 +17,21 @@ CREATE TABLE IF NOT EXISTS messages (
 )
 ''')
 
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    password TEXT NOT NULL
+)
+''')
+
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS api_keys (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key TEXT NOT NULL
+) 
+''')
+
 # Sauvegarder les changements et fermer la connexion
 conn.commit()
 conn.close()
