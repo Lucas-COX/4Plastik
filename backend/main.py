@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import queue
 import pickle
 import numpy as np
+import sqlite3
 
 app = FastAPI()
 
@@ -32,6 +33,8 @@ async def add_message(message: Message):
 
 # Function to process messages from the queue asynchronously
 async def process_queue():
+    conn = sqlite3.connect('messages.db')
+    cursor = conn.cursor()
     while True:
         if not message_queue.empty():
             message = message_queue.get()
@@ -44,15 +47,15 @@ async def process_queue():
             score = suicide_model.predict(input_data)[0]
             
             # Store the processed message and its score
-            processed_messages.append({
-                "account": message.account,
-                "content": message.content,
-                "social": message.social,
-                "score": score
-            })
+            cursor.execute('''
+                INSERT INTO messages (account, content, social, score) 
+                VALUES (?, ?, ?, ?)
+            ''', (message.account, message.content, message.social, score))
+            conn.commit()
             
             print(f"Processed message from {message.account} on {message.social}: \"{message.content}\", Score: {score}")
         await asyncio.sleep(1)
+    conn.close()
 
 # Background task to process the queue
 @app.on_event("startup")
@@ -62,6 +65,16 @@ async def startup_event():
 # Endpoint to get all processed messages
 @app.get("/get-processed-messages")
 async def get_processed_messages():
+    conn = sqlite3.connect('messages.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM messages")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    processed_messages = [
+        {"id": row[0], "account": row[1], "content": row[2], "social": row[3], "score": row[4]} 
+        for row in rows
+    ]
     return {"processed_messages": processed_messages}
 
 # Default endpoint
