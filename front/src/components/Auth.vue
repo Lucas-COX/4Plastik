@@ -28,6 +28,7 @@
     },
     methods: {
       async handleLogin() {
+        console.log(import.meta.env.VITE_API_URL);
         const resp = await fetch(`${import.meta.env.VITE_API_URL}/token`, {
           method: 'POST',
           body: JSON.stringify({
