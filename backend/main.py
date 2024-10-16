@@ -8,14 +8,17 @@ import sqlite3
 from fastapi.security import OAuth2PasswordBearer
 import jwt
 import bcrypt
+import os
 
 app = FastAPI()
 
 # Define an asyncio queue to hold incoming messages
 message_queue = asyncio.Queue()
 
-# Load the trained model (assuming the model is saved as 'suicide_model.pkl')
-with open('suicide_model.pkl', 'rb') as model_file:
+model_path = os.environ.get("MODEL_PATH")
+data_path = os.path.join(os.path.dirname(__file__), 'data/messages.db')
+
+with open(model_path, 'rb') as model_file:
     suicide_model = pickle.load(model_file)
     
 # Define SQLite database path

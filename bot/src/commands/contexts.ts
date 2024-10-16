@@ -1,30 +1,42 @@
-import type {
-  MessageContextMenuCommandInteraction,
-  UserContextMenuCommandInteraction,
-} from "discord.js";
+import type { MessageContextMenuCommandInteraction } from "discord.js";
 import { ApplicationCommandType } from "discord.js";
 import { ContextMenu, Discord } from "discordx";
 
 @Discord()
 export class Example {
+  /**
+   * Handles the "Send DM to Author" context menu command.
+   * 
+   * Sends a DM to the author of the selected message.
+   * 
+   * @param interaction - The interaction object containing information about
+   *                      the context menu command invocation.
+   * @returns A Promise that resolves when the operation is complete.
+   */
   @ContextMenu({
-    name: "message context",
+    name: "Send DM to Author",
     type: ApplicationCommandType.Message,
   })
-  async messageHandler(
+  async sendDMToAuthor(
     interaction: MessageContextMenuCommandInteraction
   ): Promise<void> {
-    await interaction.reply("I am message context handler");
-  }
+    const author = interaction.targetMessage.author;
+    const successMessage = "DM sent successfully to the author.";
 
-  @ContextMenu({
-    name: "user context",
-    type: ApplicationCommandType.User,
-  })
-  async userHandler(
-    interaction: UserContextMenuCommandInteraction
-  ): Promise<void> {
-    await interaction.reply("I am user context handler");
+    try {
+      await author.send("zbi tkt ça va bien se passer");
+      console.log(successMessage)
+      await interaction.reply({
+        content: successMessage,
+        ephemeral: true,
+      });
+    } catch (error) {
+      console.error("Error sending DM:", error);
+      await interaction.reply({
+        content: "Failed to send DM. The user might have DMs disabled.",
+        ephemeral: true,
+      });
+    }
   }
 
   /**
@@ -36,10 +48,7 @@ export class Example {
    *                      the context menu command invocation.
    * @returns A Promise that resolves when the operation is complete.
    */
-  @ContextMenu({
-    name: "Echo Message",
-    type: ApplicationCommandType.Message,
-  })
+  @ContextMenu({ name: "Echo Message", type: ApplicationCommandType.Message })
   async echoMessage(
     interaction: MessageContextMenuCommandInteraction
   ): Promise<void> {
