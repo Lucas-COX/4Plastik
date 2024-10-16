@@ -5,8 +5,19 @@ services:
     env_file: ./bot/.env 
 
   backend:
-    build: backend/
+    build:
+      context: backend/
+      args:
+        model: /tmp/models/suicide_model.pkl
+    env_file: backend/.env
+    environment:
+      MODEL_PATH: /tmp/models/suicide_model.pkl
     ports:
       - 8080:8080
     volumes:
       - ./backend/:/tmp/app/
+      - ./monitor/models/:/tmp/models/
+
+networks:
+  web:
+  postgres:
