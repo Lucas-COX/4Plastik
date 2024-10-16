@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Annotated, Union
 import asyncio
 import dotenv
 from fastapi import FastAPI, Depends, HTTPException, status
@@ -6,7 +6,8 @@ from pydantic import BaseModel
 import pickle
 import numpy as np
 import sqlite3
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 import jwt
 import bcrypt
 import os
@@ -16,7 +17,6 @@ if "MODEL_PATH" not in os.environ.keys():
 
 app = FastAPI()
 
-# cors va te faire faire
 origins = [
     "http://localhost:5173",   
     "http://127.0.0.1:5173"    
@@ -39,9 +39,6 @@ data_path = os.path.join(os.path.dirname(__file__), 'data/messages.db')
 with open(model_path, 'rb') as model_file:
     suicide_model = pickle.load(model_file)
     
-# Define SQLite database path
-db_path = 'messages.db'
-
 # OAuth2 setup
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 SECRET_KEY = "testsecretkey"
@@ -53,15 +50,9 @@ class Message(BaseModel):
     content: str
     social: str
 
-# Hash a password using bcrypt
-def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-    return hashed.decode('utf-8')
-
 # Verify user credentials against the 'users' table
 def verify_user(email: str, password: str) -> bool:
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(data_path)
     cursor = conn.cursor()
     cursor.execute("SELECT password FROM users WHERE email = ?", (email,))
     user = cursor.fetchone()
@@ -72,7 +63,7 @@ def verify_user(email: str, password: str) -> bool:
 
 # Verify API key against the 'api_keys' table
 def verify_api_key(key: str) -> bool:
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(data_path)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM api_keys WHERE key = ?", (key,))
     api_key = cursor.fetchone()
@@ -92,6 +83,7 @@ async def login_for_access_token(login_request: LoginRequest):
             headers={"WWW-Authenticate": "Bearer"},
         )
     token = jwt.encode({"sub": login_request.username}, SECRET_KEY, algorithm=ALGORITHM)
+    print(token)
     return {"access_token": token, "token_type": "bearer"}
 
 # Endpoint to receive messages and add them to the queue (protected by API key)
@@ -108,7 +100,7 @@ async def add_message(message: Message, token: str = Depends(oauth2_scheme)):
 
 # Function to process messages from the queue asynchronously
 async def process_queue():
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(data_path)
     cursor = conn.cursor()
     while True:
         if not message_queue.empty():
@@ -137,7 +129,7 @@ async def startup_event():
     asyncio.create_task(process_queue())
     
 def user_exists(email):
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(data_path)
     cursor = conn.cursor()
     cursor.execute("SELECT 1 FROM users WHERE email = ?", (email,))
     user = cursor.fetchone()
@@ -169,7 +161,7 @@ async def get_processed_messages(token: str = Depends(oauth2_scheme)):
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(data_path)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM messages")
     rows = cursor.fetchall()

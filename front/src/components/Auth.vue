@@ -27,12 +27,20 @@
       };
     },
     methods: {
-      handleLogin() {
-        // Mocking a simple login mechanism
-        // On production, you should call an API to validate credentials.
-        if (this.username === 'admin' && this.password === 'securepassword') {
-          // Store a token or flag indicating the user is authenticated
-          localStorage.setItem('isAuthenticated', true);
+      async handleLogin() {
+        const resp = await fetch(`${import.meta.env.VITE_API_URL}/token`, {
+          method: 'POST',
+          body: JSON.stringify({
+            username: this.username,
+            password: this.password,
+          }),
+          headers: {
+            "Content-Type": "application/json"
+          }
+        })
+        if (resp.ok) {
+          const data = await resp.json();
+          localStorage.setItem('token', data.access_token);
           this.$router.push({ name: 'test' });
         } else {
           this.errorMessage = "Nom d'utilisateur ou mot de passe incorrect.";
