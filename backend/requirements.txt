@@ -1,6 +1,7 @@
+bcrypt
 fastapi
 fastapi-cli
-jwt
+pyjwt
 numpy
 pydantic
 python-dotenv

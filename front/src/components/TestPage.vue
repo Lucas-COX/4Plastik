@@ -61,7 +61,6 @@
 </template>
 
 <script>
-import axios from 'axios';
 import { ref } from 'vue';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -80,19 +79,25 @@ export default {
     const profiles = ref([]);
     const editingRows = ref([]);
 
-    const fetchProfiles = () => {
-      axios.get('http://127.0.0.1:8000/get-processed-messages')
-        .then(response => {
-          if (Array.isArray(response.data.processed_messages)) {
-            profiles.value = response.data.processed_messages ? [...response.data.processed_messages] : [];
-            console.log(response.data.processed_messages);
-          } else {
-            console.error('Полученные данные не являются массивом:', response.data);
-          }
-        })
-        .catch(error => {
-          console.error('Erreur lors de la récupération des données:', error);
-        });
+    const fetchProfiles = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        window.location.assign("/");
+      }
+      const resp = await fetch(`${import.meta.env.VITE_API_URL}/get-processed-messages`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        }
+      }).catch((e) => {
+        localStorage.removeItem("token");
+        this.$router.push("/");
+      });
+      const data = await resp.json();
+      if (Array.isArray(data.processed_messages)) {
+        profiles.value = data.processed_messages ? [...data.processed_messages] : [];
+      } else {
+        console.error('Полученные данные не являются массивом:', response.data);
+      }
     };
 
     const onRowEditSave = (event) => {
