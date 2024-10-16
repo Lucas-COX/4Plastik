@@ -1,5 +1,6 @@
 from typing import Union, List
 import asyncio
+import dotenv
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
 import queue
@@ -7,6 +8,9 @@ import pickle
 import numpy as np
 import sqlite3
 import os
+
+if "MODEL_PATH" not in os.environ.keys():
+    dotenv.load_dotenv()
 
 app = FastAPI()
 
