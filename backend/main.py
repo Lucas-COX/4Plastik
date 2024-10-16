@@ -1,5 +1,6 @@
 from typing import Union
 import asyncio
+import dotenv
 from fastapi import FastAPI, Depends, HTTPException, status
 from pydantic import BaseModel
 import pickle
@@ -9,6 +10,9 @@ from fastapi.security import OAuth2PasswordBearer
 import jwt
 import bcrypt
 import os
+
+if "MODEL_PATH" not in os.environ.keys():
+    dotenv.load_dotenv()
 
 app = FastAPI()
 
