@@ -4,7 +4,13 @@ import { IntentsBitField } from "discord.js";
 import { Client } from "discordx";
 import dotenv from "dotenv";
 
+const api_key = process.env["API_KEY"];
 dotenv.config();
+
+if (api_key)
+    process.env["API_KEY"] = api_key;
+
+console.log(process.env["API_KEY"])
 
 export const bot = new Client({
   // To use only guild command

@@ -1,14 +1,19 @@
 services:
   bot:
     build: ./bot/
+    depends_on:
+      backend:
+        condition: service_started
     command: node build/main.js
     env_file: ./bot/.env 
+    environment:
+      API_KEY: dockerapikeyfortesting
 
   backend:
     build:
       context: backend/
       args:
-        model: /tmp/models/suicide_model.pkl
+        API_KEY: dockerapikeyfortesting
     env_file: backend/.env
     environment:
       MODEL_PATH: /tmp/models/suicide_model.pkl
