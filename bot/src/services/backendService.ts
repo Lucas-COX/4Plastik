@@ -25,9 +25,11 @@ export async function sendDataToBackend(account: string, content: string, social
   };
 
   try {
-    const response = await fetch('YOUR_BACKEND_URL/add-message', {
+    const response = await fetch(`${process.env.API_URL}/add-message`, {
+      mode: 'no-cors',
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${process.env["API_KEY"]}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
