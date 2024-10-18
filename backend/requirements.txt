@@ -1,0 +1,8 @@
+bcrypt
+fastapi
+fastapi-cli
+pyjwt
+numpy
+pydantic
+python-dotenv
+scikit-learn

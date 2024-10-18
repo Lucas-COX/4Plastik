@@ -4,13 +4,17 @@ import { IntentsBitField } from "discord.js";
 import { Client } from "discordx";
 import dotenv from "dotenv";
 
+const api_key = process.env["API_KEY"];
 dotenv.config();
+
+if (api_key)
+    process.env["API_KEY"] = api_key;
+
+console.log(process.env["API_KEY"])
 
 export const bot = new Client({
   // To use only guild command
   // botGuilds: [(client) => client.guilds.cache.map((guild) => guild.id)],
-
-  // Discord intents
   intents: [
     IntentsBitField.Flags.Guilds,
     IntentsBitField.Flags.GuildMembers,
@@ -18,23 +22,18 @@ export const bot = new Client({
     IntentsBitField.Flags.GuildMessageReactions,
     IntentsBitField.Flags.GuildVoiceStates,
     IntentsBitField.Flags.MessageContent,
+    IntentsBitField.Flags.DirectMessages
   ],
-
   // Debug logs are disabled in silent mode
-  silent: false,
-
-  // Configuration for @SimpleCommand
-  simpleCommand: {
-    prefix: "!",
-  },
+  silent: false
 });
 
-bot.once("ready", () => {
+bot.once("ready", async () => {
   // Make sure all guilds are cached
   // await bot.guilds.fetch();
 
   // Synchronize applications commands with Discord
-  void bot.initApplicationCommands();
+  await void bot.initApplicationCommands();
 
   // To clear all guild commands, uncomment this line,
   // This is useful when moving from guild commands to global commands
@@ -58,7 +57,8 @@ bot.on("messageCreate", (message: Message) => {
 async function run() {
   // The following syntax should be used in the commonjs environment
   //
-  // await importx(__dirname + "/{events,commands}/**/*.{ts,js}");
+  //await importx(__dirname + "/{events,commands}/**/*.{ts,js}");
+  
 
   // The following syntax should be used in the ECMAScript environment
   await importx(`${dirname(import.meta.url)}/{events,commands}/**/*.{ts,js}`);
